@@ -13,17 +13,17 @@ import java.util.Map;
 
 public final class InstructionListImpl implements InstructionList {
 	private final List<CodeElement> list;
-	private final Map<CodeElement, Integer> indices;
+	// private final Map<CodeElement, Integer> indices;
 
 	private InstructionListImpl(List<CodeElement> instructions) {
 		this.list = Collections.unmodifiableList(instructions);
-		this.indices = new IdentityHashMap<>();
-		for (int i = 0; i < this.list.size(); i++) {
-			CodeElement instruction = this.list.get(i);
-			if (this.indices.put(instruction, i) != null) {
-				throw new IllegalArgumentException("Duplicate instruction: " + instruction);
-			}
-		}
+		// this.indices = new IdentityHashMap<>();
+		// for (int i = 0; i < this.list.size(); i++) {
+		// 	CodeElement instruction = this.list.get(i);
+		// 	if (this.indices.put(instruction, i) != null) {
+		// 		throw new IllegalArgumentException("Duplicate instruction: " + instruction);
+		// 	}
+		// }
 	}
 
 	@Override
@@ -33,11 +33,12 @@ public final class InstructionListImpl implements InstructionList {
 
 	@Override
 	public int indexOf(CodeElement instruction) {
-		Integer i = this.indices.get(instruction);
-		if (i != null)
-			return i;
+		// Integer i = this.indices.get(instruction);
+		// if (i != null)
+		// 	return i;
 
-		throw new IllegalArgumentException("Instruction is not in this list: " + instruction);
+		// throw new IllegalArgumentException("Instruction is not in this list: " + instruction);
+		return list.indexOf(instruction);
 	}
 
 	@Override
