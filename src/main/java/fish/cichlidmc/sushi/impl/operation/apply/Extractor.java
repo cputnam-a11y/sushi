@@ -84,7 +84,8 @@ public final class Extractor {
 
 	public void finish(Consumer<CodeBlock> output, MethodGenerator methodGenerator) {
 		MethodTypeDesc extractionDesc = this.extraction.desc();
-		MethodTypeDesc lambdaDesc = MethodTypeDesc.of(extractionDesc.returnType(), ConstantDescs.CD_Object.arrayType());
+		boolean isVoid = extractionDesc.returnType().descriptorString().equals("V");
+		MethodTypeDesc lambdaDesc = MethodTypeDesc.of(isVoid ? Void.class.describeConstable().orElseThrow() : extractionDesc.returnType())
 		ClassDesc[] params = extractionDesc.parameterArray();
 		ClassDesc returnType = extractionDesc.returnType();
 
@@ -119,9 +120,14 @@ public final class Extractor {
 				// TODO: fix locals
 				code.with(element);
 			}
-
-			// tail: return
-			code.returnInstruction(TypeKind.from(returnType));
+			
+			if (isVoid) {
+				code.aconst_null();
+				code.areturn();
+			} else {
+                // tail: return
+            	code.returnInstruction(TypeKind.from(returnType));
+			}
 		}));
 
 
