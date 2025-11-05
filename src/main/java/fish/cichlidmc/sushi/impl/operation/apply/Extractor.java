@@ -85,7 +85,7 @@ public final class Extractor {
 	public void finish(Consumer<CodeBlock> output, MethodGenerator methodGenerator) {
 		MethodTypeDesc extractionDesc = this.extraction.desc();
 		boolean isVoid = extractionDesc.returnType().descriptorString().equals("V");
-		MethodTypeDesc lambdaDesc = MethodTypeDesc.of(isVoid ? Void.class.describeConstable().orElseThrow() : extractionDesc.returnType());
+		MethodTypeDesc lambdaDesc = MethodTypeDesc.of(isVoid ? Void.class.describeConstable().orElseThrow() : extractionDesc.returnType(), ConstantDescs.CD_Object.arrayType());
 		ClassDesc[] params = extractionDesc.parameterArray();
 		ClassDesc returnType = extractionDesc.returnType();
 
