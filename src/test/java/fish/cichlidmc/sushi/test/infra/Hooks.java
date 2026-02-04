@@ -33,6 +33,9 @@ public final class Hooks {
 	public static void injectWithLocal(boolean bl) {
 	}
 
+	public static void injectWithLocals(int x, boolean bl) {
+	}
+
 	public static int wrapWithShare(TestTarget self, boolean b, Operation<Integer> original, ShortRef shared) {
 		return original.call(self, b);
 	}
@@ -45,6 +48,10 @@ public final class Hooks {
 
 	public static int modifyInt(int i) {
 		return i;
+	}
+
+	public static int[] modifyIntArray(int[] ints) {
+		return ints;
 	}
 
 	public static int modifyIntWithLocal(int i, byte b) {
@@ -65,6 +72,10 @@ public final class Hooks {
 
 	public static void wrapDoThing(TestTarget target, int x, String s, Operation<Void> operation) {
 		operation.call(target, x, s);
+	}
+
+	public static StringBuilder wrapConstruct(Operation<StringBuilder> operation) {
+		return operation.call();
 	}
 
 	public static Object modifyObject(Object object) {

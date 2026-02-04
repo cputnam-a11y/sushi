@@ -6,6 +6,7 @@ import fish.cichlidmc.sushi.api.match.method.MethodSelector;
 import fish.cichlidmc.sushi.api.match.method.MethodTarget;
 import fish.cichlidmc.sushi.api.match.point.PointTarget;
 import fish.cichlidmc.sushi.api.match.point.builtin.ExpressionPointSelector;
+import fish.cichlidmc.sushi.api.match.point.builtin.HeadPointSelector;
 import fish.cichlidmc.sushi.api.param.builtin.LocalContextParameter;
 import fish.cichlidmc.sushi.api.transformer.base.HookingTransformer;
 import fish.cichlidmc.sushi.api.transformer.builtin.InjectTransformer;
@@ -56,7 +57,7 @@ public final class LocalTests {
 						false,
 						new PointTarget(new ExpressionPointSelector(new InvokeExpressionSelector(new MethodSelector("noop"))))
 				)
-		).expect("""
+		).decompile("""
 				double test() {
 					int x = 1;
 					double d = 4.0;
@@ -66,7 +67,7 @@ public final class LocalTests {
 					return x * d + s.length();
 				}
 				"""
-		);
+		).execute();
 	}
 
 	@Test
@@ -95,7 +96,7 @@ public final class LocalTests {
 						false,
 						new PointTarget(new ExpressionPointSelector(new InvokeExpressionSelector(new MethodSelector("noop"))))
 				)
-		).expect("""
+		).decompile("""
 				double test() {
 					int x = 1;
 					double d = 4.0;
@@ -105,7 +106,7 @@ public final class LocalTests {
 					return x * d + s.length();
 				}
 				"""
-		);
+		).execute();
 	}
 
 	@Test
@@ -134,7 +135,7 @@ public final class LocalTests {
 						false,
 						new PointTarget(new ExpressionPointSelector(new InvokeExpressionSelector(new MethodSelector("noop"))))
 				)
-		).expect("""
+		).decompile("""
 				double test() {
 					int x = 1;
 					double d = 4.0;
@@ -144,7 +145,7 @@ public final class LocalTests {
 					return x * d + s.length();
 				}
 				"""
-		);
+		).execute();
 	}
 
 	@Test
@@ -182,7 +183,7 @@ public final class LocalTests {
 						false,
 						new PointTarget(new ExpressionPointSelector(new InvokeExpressionSelector(new MethodSelector("noop"))))
 				)
-		).expect("""
+		).decompile("""
 				void test() {
 					int x = 0;
 					if (x > 1) {
@@ -198,6 +199,42 @@ public final class LocalTests {
 						noop();
 					}
 				}
+				"""
+		).execute();
+	}
+
+	@Test
+	public void checkHeadScopes() {
+		// we do some shenanigans with local scopes at the method's head, make sure
+		// a local right at the top is correctly not found when injecting at head
+		factory.compile("""
+				double test(boolean bl) {
+					int x = 1;
+					return Math.sqrt(x);
+				}
+				"""
+		).transform(
+				new InjectTransformer(
+						new SingleClassPredicate(TestTarget.DESC),
+						new MethodTarget(new MethodSelector("test")),
+						Slice.NONE,
+						new HookingTransformer.Hook(
+								new HookingTransformer.Hook.Owner(Hooks.DESC),
+								"injectWithLocals",
+								List.of(
+										LocalContextParameter.forName("x", ConstantDescs.CD_int, false),
+										LocalContextParameter.forName("bl", ConstantDescs.CD_boolean, false)
+								)
+						),
+						false,
+						HeadPointSelector.TARGET
+				)
+		).fail("""
+				No local variable found with name x
+				Details:
+					- Class being transformed: fish.cichlidmc.sushi.test.infra.TestTarget
+					- Transformers: default[-> tests:0 <-]
+					- Method: double test(boolean)
 				"""
 		);
 	}

@@ -2,6 +2,7 @@ package fish.cichlidmc.sushi.test.def;
 
 import fish.cichlidmc.sushi.api.match.classes.builtin.SingleClassPredicate;
 import fish.cichlidmc.sushi.api.match.expression.ExpressionTarget;
+import fish.cichlidmc.sushi.api.match.expression.builtin.ConstructionExpressionSelector;
 import fish.cichlidmc.sushi.api.match.expression.builtin.InvokeExpressionSelector;
 import fish.cichlidmc.sushi.api.match.method.MethodSelector;
 import fish.cichlidmc.sushi.api.match.method.MethodTarget;
@@ -14,6 +15,7 @@ import fish.cichlidmc.sushi.api.transformer.builtin.InjectTransformer;
 import fish.cichlidmc.sushi.api.transformer.builtin.WrapOpTransformer;
 import fish.cichlidmc.sushi.api.transformer.infra.Operation;
 import fish.cichlidmc.sushi.api.transformer.infra.Slice;
+import fish.cichlidmc.sushi.api.util.ClassDescs;
 import fish.cichlidmc.sushi.test.framework.TestFactory;
 import fish.cichlidmc.sushi.test.infra.Hooks;
 import fish.cichlidmc.sushi.test.infra.TestTarget;
@@ -57,7 +59,7 @@ public final class WrapOpTests {
 						),
 						new ExpressionTarget(new InvokeExpressionSelector(new MethodSelector("getInt")))
 				)
-		).expect("""
+		).decompile("""
 				void test() {
 					int i = Hooks.wrapGetInt(this, true, var0 -> {
 						OperationInfra.checkCount(var0, 2);
@@ -65,7 +67,7 @@ public final class WrapOpTests {
 					});
 				}
 				"""
-		);
+		).execute();
 	}
 
 	@Test
@@ -86,15 +88,18 @@ public final class WrapOpTests {
 						),
 						new ExpressionTarget(new InvokeExpressionSelector(new MethodSelector("doThing")))
 				)
-		).expect("""
+		).decompile("""
 				void test() {
 					Hooks.wrapDoThing(this, 1, "h", var0 -> {
 						OperationInfra.checkCount(var0, 3);
 						((TestTarget)var0[0]).doThing((Integer)var0[1], (String)var0[2]);
+						return null;
 					});
 				}
 				"""
-		);
+		).invoke(
+				"test", List.of(), null
+		).execute();
 	}
 
 	@Test
@@ -126,7 +131,7 @@ public final class WrapOpTests {
 						),
 						new ExpressionTarget(new InvokeExpressionSelector(new MethodSelector("getInt")))
 				)
-		).expect("""
+		).decompile("""
 				void test() {
 					int i = Hooks.wrapGetInt(this, true, var0 -> {
 						OperationInfra.checkCount(var0, 2);
@@ -137,7 +142,7 @@ public final class WrapOpTests {
 					});
 				}
 				"""
-		);
+		).execute();
 	}
 
 	@Test
@@ -160,7 +165,7 @@ public final class WrapOpTests {
 						),
 						new ExpressionTarget(new InvokeExpressionSelector(new MethodSelector("getInt")))
 				)
-		).expect("""
+		).decompile("""
 				void test() {
 					double d = 12.0;
 					boolean var10001 = d > 5.0;
@@ -174,7 +179,7 @@ public final class WrapOpTests {
 					var4.discard();
 				}
 				"""
-		);
+		).execute();
 	}
 
 	@Test
@@ -208,7 +213,7 @@ public final class WrapOpTests {
 						),
 						new ExpressionTarget(new InvokeExpressionSelector(new MethodSelector("getInt")))
 				)
-		).expect("""
+		).decompile("""
 				void test() {
 					double d = 12.0;
 					boolean var10001 = d > 5.0;
@@ -231,7 +236,7 @@ public final class WrapOpTests {
 					var5.discard();
 				}
 				"""
-		);
+		).execute();
 	}
 
 	@Test
@@ -282,7 +287,7 @@ public final class WrapOpTests {
 						false,
 						TailPointSelector.TARGET
 				)
-		).expect("""
+		).decompile("""
 				String test(double d) {
 					ShortRefImpl var5 = new ShortRefImpl();
 					short s = 12;
@@ -299,7 +304,7 @@ public final class WrapOpTests {
 					return var10000;
 				}
 				"""
-		);
+		).execute();
 	}
 
 	@Test
@@ -377,7 +382,7 @@ public final class WrapOpTests {
 						new ExpressionTarget(new InvokeExpressionSelector(new MethodSelector("getInt")))
 				)
 				// I pinky promise this is correct (at least, I'm pretty sure)
-		).expect("""
+		).decompile("""
 				String test(double d) {
 					ShortRefImpl var5 = new ShortRefImpl();
 					short s = 12;
@@ -418,6 +423,37 @@ public final class WrapOpTests {
 					return var10;
 				}
 				"""
-		);
+		).execute();
+	}
+
+	@Test
+	public void wrapConstruct() {
+		factory.compile("""
+				void test() {
+					Object s = "abc";
+					StringBuilder builder = new StringBuilder(s.toString());
+				}
+				"""
+		).transform(
+				new WrapOpTransformer(
+						new SingleClassPredicate(TestTarget.DESC),
+						new MethodTarget(new MethodSelector("test")),
+						Slice.NONE,
+						new HookingTransformer.Hook(
+								new HookingTransformer.Hook.Owner(Hooks.DESC),
+								"wrapConstruct"
+						),
+						new ExpressionTarget(new ConstructionExpressionSelector(ClassDescs.of(StringBuilder.class)))
+				)
+		).decompile("""
+				void test() {
+					Object s = "abc";
+					StringBuilder builder = Hooks.wrapConstruct(var1x -> {
+						OperationInfra.checkCount(var1x, 0);
+						return new StringBuilder(s.toString());
+					});
+				}
+				"""
+		).execute();
 	}
 }

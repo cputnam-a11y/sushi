@@ -45,12 +45,12 @@ public final class SelectionBuilderImpl implements Selection.Builder {
 
 	@Override
 	public Selection head() {
-		return this.only(this.instructions.first());
+		return this.only(this.instructions.getFirst());
 	}
 
 	@Override
 	public Selection tail() {
-		return this.only(this.instructions.last());
+		return this.only(this.instructions.getLast());
 	}
 
 	@Override

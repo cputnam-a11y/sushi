@@ -1,7 +1,9 @@
 package fish.cichlidmc.sushi.test.def;
 
 import fish.cichlidmc.sushi.api.match.classes.builtin.SingleClassPredicate;
+import fish.cichlidmc.sushi.api.match.expression.builtin.ConstructionExpressionSelector;
 import fish.cichlidmc.sushi.api.match.expression.builtin.InvokeExpressionSelector;
+import fish.cichlidmc.sushi.api.match.expression.builtin.NewExpressionSelector;
 import fish.cichlidmc.sushi.api.match.method.MethodSelector;
 import fish.cichlidmc.sushi.api.match.method.MethodTarget;
 import fish.cichlidmc.sushi.api.match.point.PointTarget;
@@ -14,6 +16,7 @@ import fish.cichlidmc.sushi.api.param.builtin.LocalContextParameter;
 import fish.cichlidmc.sushi.api.transformer.base.HookingTransformer;
 import fish.cichlidmc.sushi.api.transformer.builtin.InjectTransformer;
 import fish.cichlidmc.sushi.api.transformer.infra.Slice;
+import fish.cichlidmc.sushi.api.util.ClassDescs;
 import fish.cichlidmc.sushi.test.framework.TestFactory;
 import fish.cichlidmc.sushi.test.infra.Hooks;
 import fish.cichlidmc.sushi.test.infra.TestTarget;
@@ -21,6 +24,7 @@ import org.junit.jupiter.api.Test;
 
 import java.lang.constant.ConstantDescs;
 import java.util.List;
+import java.util.StringJoiner;
 
 public final class InjectTests {
 	private static final TestFactory factory = TestFactory.ROOT.fork()
@@ -53,13 +57,15 @@ public final class InjectTests {
 						false,
 						HeadPointSelector.TARGET
 				)
-		).expect("""
+		).decompile("""
 				void test() {
 					Hooks.inject();
 					noop();
 				}
 				"""
-		);
+		).invoke(
+				"test", List.of(), null
+		).execute();
 	}
 
 	@Test
@@ -81,13 +87,13 @@ public final class InjectTests {
 						false,
 						TailPointSelector.TARGET
 				)
-		).expect("""
+		).decompile("""
 				void test() {
 					noop();
 					Hooks.inject();
 				}
 				"""
-		);
+		).execute();
 	}
 
 	@Test
@@ -121,14 +127,14 @@ public final class InjectTests {
 						false,
 						TailPointSelector.TARGET
 				)
-		).expect("""
+		).decompile("""
 				void test() {
 					Hooks.inject();
 					noop();
 					Hooks.inject();
 				}
 				"""
-		);
+		).execute();
 	}
 
 	@Test
@@ -176,7 +182,7 @@ public final class InjectTests {
 						false,
 						ReturnPointSelector.ALL_TARGET
 				)
-		).expect("""
+		).decompile("""
 				void test(boolean b) {
 					if (b) {
 						Hooks.inject();
@@ -186,7 +192,7 @@ public final class InjectTests {
 					}
 				}
 				"""
-		);
+		).execute();
 	}
 
 	@Test
@@ -212,7 +218,7 @@ public final class InjectTests {
 						false,
 						new PointTarget(new ReturnPointSelector(0))
 				)
-		).expect("""
+		).decompile("""
 				void test(boolean b) {
 					if (b) {
 						Hooks.inject();
@@ -221,7 +227,7 @@ public final class InjectTests {
 					}
 				}
 				"""
-		);
+		).execute();
 	}
 
 	@Test
@@ -243,13 +249,13 @@ public final class InjectTests {
 						false,
 						new PointTarget(new ExpressionPointSelector(new InvokeExpressionSelector(new MethodSelector("noop"))))
 				)
-		).expect("""
+		).decompile("""
 				void test() {
 					Hooks.inject();
 					noop();
 				}
 				"""
-		);
+		).execute();
 	}
 
 	@Test
@@ -274,13 +280,13 @@ public final class InjectTests {
 								Offset.AFTER
 						))
 				)
-		).expect("""
+		).decompile("""
 				void test() {
 					noop();
 					Hooks.inject();
 				}
 				"""
-		);
+		).execute();
 	}
 
 	@Test
@@ -302,14 +308,14 @@ public final class InjectTests {
 						true,
 						HeadPointSelector.TARGET
 				)
-		).expect("""
+		).decompile("""
 				void test() {
 					if (Hooks.injectAndCancel() == null) {
 						noop();
 					}
 				}
 				"""
-		);
+		).execute();
 	}
 
 	@Test
@@ -332,7 +338,7 @@ public final class InjectTests {
 						true,
 						HeadPointSelector.TARGET
 				)
-		).expect("""
+		).decompile("""
 				int test() {
 					Cancellation var10000 = Hooks.injectAndCancel();
 					if (var10000 != null) {
@@ -343,7 +349,7 @@ public final class InjectTests {
 					}
 				}
 				"""
-		);
+		).execute();
 	}
 
 	@Test
@@ -370,7 +376,7 @@ public final class InjectTests {
 						false,
 						new PointTarget(new ExpressionPointSelector(new InvokeExpressionSelector(new MethodSelector("noop"))))
 				)
-		).expect("""
+		).decompile("""
 				int test() {
 					int x = 1;
 					Hooks.injectWithLocal(x);
@@ -378,7 +384,7 @@ public final class InjectTests {
 					return x;
 				}
 				"""
-		);
+		).execute();
 	}
 
 	@Test
@@ -405,7 +411,7 @@ public final class InjectTests {
 						false,
 						new PointTarget(new ExpressionPointSelector(new InvokeExpressionSelector(new MethodSelector("noop"))))
 				)
-		).expect("""
+		).decompile("""
 				int test() {
 					int x = 1;
 					IntRefImpl var2 = new IntRefImpl(x);
@@ -416,6 +422,273 @@ public final class InjectTests {
 					return x;
 				}
 				"""
-		);
+		).execute();
+	}
+
+	@Test
+	public void newObject() {
+		factory.compile("""
+				void test() {
+					java.util.StringJoiner joiner = new java.util.StringJoiner(", ");
+				}
+				"""
+		).transform(
+				new InjectTransformer(
+						new SingleClassPredicate(TestTarget.DESC),
+						new MethodTarget(new MethodSelector("test")),
+						Slice.NONE,
+						new HookingTransformer.Hook(
+								new HookingTransformer.Hook.Owner(Hooks.DESC),
+								"inject"
+						),
+						false,
+						new PointTarget(new ExpressionPointSelector(new NewExpressionSelector(
+								ClassDescs.of(StringJoiner.class)
+						)))
+				)
+		).decompile("""
+				void test() {
+					Hooks.inject();
+					new StringJoiner(", ");
+				}
+				"""
+		).execute();
+	}
+
+	@Test
+	public void newPrimitiveArray() {
+		factory.compile("""
+				void test() {
+					int[] ints = new int[3];
+				}
+				"""
+		).transform(
+				new InjectTransformer(
+						new SingleClassPredicate(TestTarget.DESC),
+						new MethodTarget(new MethodSelector("test")),
+						Slice.NONE,
+						new HookingTransformer.Hook(
+								new HookingTransformer.Hook.Owner(Hooks.DESC),
+								"inject"
+						),
+						false,
+						new PointTarget(new ExpressionPointSelector(new NewExpressionSelector(
+								ClassDescs.of(int[].class)
+						)))
+				)
+		).decompile("""
+				void test() {
+					Hooks.inject();
+					int[] ints = new int[3];
+				}
+				"""
+		).execute();
+	}
+
+	@Test
+	public void newReferenceArray() {
+		factory.compile("""
+				void test() {
+					java.util.StringJoiner[] joiners = new java.util.StringJoiner[2];
+				}
+				"""
+		).transform(
+				new InjectTransformer(
+						new SingleClassPredicate(TestTarget.DESC),
+						new MethodTarget(new MethodSelector("test")),
+						Slice.NONE,
+						new HookingTransformer.Hook(
+								new HookingTransformer.Hook.Owner(Hooks.DESC),
+								"inject"
+						),
+						false,
+						new PointTarget(new ExpressionPointSelector(new NewExpressionSelector(
+								ClassDescs.of(StringJoiner[].class)
+						)))
+				)
+		).decompile("""
+				void test() {
+					Hooks.inject();
+					StringJoiner[] joiners = new StringJoiner[2];
+				}
+				"""
+		).execute();
+	}
+
+	@Test
+	public void newPrimitiveMultidimensionalArray() {
+		factory.compile("""
+				void test() {
+					int[][] ints2d = new int[3][3];
+				}
+				"""
+		).transform(
+				new InjectTransformer(
+						new SingleClassPredicate(TestTarget.DESC),
+						new MethodTarget(new MethodSelector("test")),
+						Slice.NONE,
+						new HookingTransformer.Hook(
+								new HookingTransformer.Hook.Owner(Hooks.DESC),
+								"inject"
+						),
+						false,
+						new PointTarget(new ExpressionPointSelector(new NewExpressionSelector(
+								ClassDescs.of(int[][].class)
+						)))
+				)
+		).decompile("""
+				void test() {
+					Hooks.inject();
+					int[][] ints2d = new int[3][3];
+				}
+				"""
+		).execute();
+	}
+
+	@Test
+	public void newReferenceMultidimensionalArray() {
+		factory.compile("""
+				void test() {
+					java.util.StringJoiner[][][] joiners3d = new java.util.StringJoiner[2][3][4];
+				}
+				"""
+		).transform(
+				new InjectTransformer(
+						new SingleClassPredicate(TestTarget.DESC),
+						new MethodTarget(new MethodSelector("test")),
+						Slice.NONE,
+						new HookingTransformer.Hook(
+								new HookingTransformer.Hook.Owner(Hooks.DESC),
+								"inject"
+						),
+						false,
+						new PointTarget(new ExpressionPointSelector(new NewExpressionSelector(
+								ClassDescs.of(StringJoiner[][].class)
+						)))
+				)
+		).decompile("""
+				void test() {
+					Hooks.inject();
+					StringJoiner[][][] joiners3d = new StringJoiner[2][3][4];
+				}
+				"""
+		).execute();
+	}
+
+	@Test
+	public void beforeConstruct() {
+		factory.compile("""
+				void test() {
+					Object o = new Object();
+					String s = o.toString();
+				}
+				"""
+		).transform(
+				new InjectTransformer(
+						new SingleClassPredicate(TestTarget.DESC),
+						new MethodTarget(new MethodSelector("test")),
+						Slice.NONE,
+						new HookingTransformer.Hook(
+								new HookingTransformer.Hook.Owner(Hooks.DESC),
+								"inject"
+						),
+						false,
+						new PointTarget(new ExpressionPointSelector(new ConstructionExpressionSelector(
+								(ConstantDescs.CD_Object)
+						)))
+				)
+		).decompile("""
+				void test() {
+					Hooks.inject();
+					Object o = new Object();
+					String s = o.toString();
+				}
+				"""
+		).execute();
+	}
+
+	@Test
+	public void afterConstruct() {
+		factory.compile("""
+				void test() {
+					Object o = new Object();
+					String s = o.toString();
+				}
+				"""
+		).transform(
+				new InjectTransformer(
+						new SingleClassPredicate(TestTarget.DESC),
+						new MethodTarget(new MethodSelector("test")),
+						Slice.NONE,
+						new HookingTransformer.Hook(
+								new HookingTransformer.Hook.Owner(Hooks.DESC),
+								"inject"
+						),
+						false,
+						new PointTarget(new ExpressionPointSelector(
+								new ConstructionExpressionSelector((ConstantDescs.CD_Object)),
+								Offset.AFTER
+						))
+				)
+		).decompile("""
+				void test() {
+					Object var10000 = new Object();
+					Hooks.inject();
+					Object o = var10000;
+					String s = o.toString();
+				}
+				"""
+		).execute();
+	}
+
+	@Test
+	public void headTailInjectsWithTry() {
+		factory.compile("""
+				void test(boolean bl) {
+					try {
+						noop();
+					} catch (RuntimeException e) {
+						e.printStackTrace();
+					}
+				}
+				"""
+		).transform(
+				new InjectTransformer(
+						new SingleClassPredicate(TestTarget.DESC),
+						new MethodTarget(new MethodSelector("test")),
+						Slice.NONE,
+						new HookingTransformer.Hook(
+								new HookingTransformer.Hook.Owner(Hooks.DESC),
+								"inject"
+						),
+						false,
+						HeadPointSelector.TARGET
+				)
+		).transform(
+				new InjectTransformer(
+						new SingleClassPredicate(TestTarget.DESC),
+						new MethodTarget(new MethodSelector("test")),
+						Slice.NONE,
+						new HookingTransformer.Hook(
+								new HookingTransformer.Hook.Owner(Hooks.DESC),
+								"inject"
+						),
+						false,
+						TailPointSelector.TARGET
+				)
+		).decompile("""
+				void test(boolean bl) {
+					Hooks.inject();
+				
+					try {
+						noop();
+					} catch (RuntimeException var3) {
+						var3.printStackTrace();
+					}
+				
+					Hooks.inject();
+				}
+				"""
+		).execute();
 	}
 }

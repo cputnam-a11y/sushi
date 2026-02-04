@@ -25,13 +25,13 @@ public final class PublicizeTests {
 				"""
 		).transform(
 				new PublicizeClassTransformer(new SingleClassPredicate(TestTarget.DESC))
-		).expect("""
+		).decompile("""
 				@TransformedBy("tests:0")
 				@PublicizedBy("tests:0")
 				public class TestTarget {
 				}
 				"""
-		);
+		).execute();
 	}
 
 	@Test
@@ -45,8 +45,8 @@ public final class PublicizeTests {
 		).fail("""
 				Class is already public
 				Details:
-					- Class being Transformed: fish.cichlidmc.sushi.test.infra.TestTarget
-					- Current Transformer: tests:0
+					- Class being transformed: fish.cichlidmc.sushi.test.infra.TestTarget
+					- Transformers: default[-> tests:0 <-]
 				"""
 		);
 	}
@@ -58,14 +58,13 @@ public final class PublicizeTests {
 				class TestTarget {
 				}
 				"""
-		).transform(transformer).transform(transformer)
-		.expect("""
+		).transform(transformer).transform(transformer).decompile("""
 				@TransformedBy({"tests:0", "tests:1"})
 				@PublicizedBy({"tests:0", "tests:1"})
 				public class TestTarget {
 				}
 				"""
-		);
+		).execute();
 	}
 
 	@Test
@@ -79,14 +78,13 @@ public final class PublicizeTests {
 			phase.builder.runBefore(Phase.DEFAULT);
 			phase.builder.withBarriers(Phase.Barriers.AFTER_ONLY);
 			phase.transform(new PublicizeClassTransformer(new SingleClassPredicate(TestTarget.DESC)));
-		})
-		.expect("""
+		}).decompile("""
 				@TransformedBy({"tests:1", "tests:0"})
 				@PublicizedBy({"tests:1", "tests:0"})
 				public class TestTarget {
 				}
 				"""
-		);
+		).execute();
 	}
 
 	@Test
@@ -99,7 +97,7 @@ public final class PublicizeTests {
 				"""
 		).transform(
 				new PublicizeClassTransformer(new SingleClassPredicate(TestTarget.DESC.nested("Inner")))
-		).expect("""
+		).decompile("""
 				public class TestTarget {
 					@TransformedBy("tests:0")
 					@PublicizedBy("tests:0")
@@ -107,7 +105,7 @@ public final class PublicizeTests {
 					}
 				}
 				"""
-		);
+		).execute();
 	}
 
 	@Test
@@ -123,8 +121,8 @@ public final class PublicizeTests {
 		).fail("""
 				Class is already public
 				Details:
-					- Class being Transformed: fish.cichlidmc.sushi.test.infra.TestTarget$Inner
-					- Current Transformer: tests:0
+					- Class being transformed: fish.cichlidmc.sushi.test.infra.TestTarget$Inner
+					- Transformers: default[-> tests:0 <-]
 				"""
 		);
 	}
@@ -141,14 +139,14 @@ public final class PublicizeTests {
 						new SingleClassPredicate(TestTarget.DESC),
 						new FieldTarget(new FieldSelector("x"))
 				)
-		).expect("""
+		).decompile("""
 				@TransformedBy("tests:0")
 				public class TestTarget {
 					@PublicizedBy("tests:0")
 					public int x;
 				}
 				"""
-		);
+		).execute();
 	}
 
 	@Test
@@ -166,8 +164,8 @@ public final class PublicizeTests {
 		).fail("""
 				Field is already public
 				Details:
-					- Class being Transformed: fish.cichlidmc.sushi.test.infra.TestTarget
-					- Current Transformer: tests:0
+					- Class being transformed: fish.cichlidmc.sushi.test.infra.TestTarget
+					- Transformers: default[-> tests:0 <-]
 					- Field: public x int
 				"""
 		);
@@ -185,14 +183,14 @@ public final class PublicizeTests {
 						new SingleClassPredicate(TestTarget.DESC),
 						new FieldTarget(new FieldSelector("x", ConstantDescs.CD_int))
 				)
-		).expect("""
+		).decompile("""
 				@TransformedBy("tests:0")
 				public class TestTarget {
 					@PublicizedBy("tests:0")
 					public int x;
 				}
 				"""
-		);
+		).execute();
 	}
 
 	@Test
@@ -209,8 +207,8 @@ public final class PublicizeTests {
 		).fail("""
 				Target matched 0 times, expected 1
 				Details:
-					- Class being Transformed: fish.cichlidmc.sushi.test.infra.TestTarget
-					- Current Transformer: tests:0
+					- Class being transformed: fish.cichlidmc.sushi.test.infra.TestTarget
+					- Transformers: default[-> tests:0 <-]
 					- Target: FieldTarget[selector=thisFieldDoesNotExist (any type), expected=1]
 				"""
 		);
@@ -235,14 +233,13 @@ public final class PublicizeTests {
 					new SingleClassPredicate(TestTarget.DESC),
 					new FieldTarget(new FieldSelector("x"))
 			));
-		})
-		.expect("""
+		}).decompile("""
 				@TransformedBy({"tests:1", "tests:0"})
 				public class TestTarget {
 					@PublicizedBy({"tests:1", "tests:0"})
 					public int x;
 				}
 				"""
-		);
+		).execute();
 	}
 }

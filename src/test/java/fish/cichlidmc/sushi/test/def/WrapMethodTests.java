@@ -7,13 +7,13 @@ import fish.cichlidmc.sushi.api.match.method.MethodSelector;
 import fish.cichlidmc.sushi.api.match.method.MethodTarget;
 import fish.cichlidmc.sushi.api.match.point.builtin.HeadPointSelector;
 import fish.cichlidmc.sushi.api.param.builtin.LocalContextParameter;
-import fish.cichlidmc.sushi.api.param.builtin.LocalSelector;
 import fish.cichlidmc.sushi.api.transformer.base.HookingTransformer;
 import fish.cichlidmc.sushi.api.transformer.builtin.InjectTransformer;
 import fish.cichlidmc.sushi.api.transformer.builtin.WrapMethodTransformer;
 import fish.cichlidmc.sushi.api.transformer.builtin.WrapOpTransformer;
 import fish.cichlidmc.sushi.api.transformer.infra.Slice;
 import fish.cichlidmc.sushi.test.framework.TestFactory;
+import fish.cichlidmc.sushi.test.framework.TestResult.Success.Invocation.Parameter;
 import fish.cichlidmc.sushi.test.infra.Hooks;
 import fish.cichlidmc.sushi.test.infra.TestTarget;
 import org.junit.jupiter.api.Test;
@@ -56,16 +56,19 @@ public final class WrapMethodTests {
 								"wrapTrivialMethod"
 						)
 				)
-		).expect("""
+		).decompile("""
 				void test() {
 					Hooks.wrapTrivialMethod(this, var0 -> {
 						OperationInfra.checkCount(var0, 1);
 						TestTarget var1 = (TestTarget)var0[0];
 						noop();
+						return null;
 					});
 				}
 				"""
-		);
+		).invoke(
+				"test", List.of(), null
+		).execute();
 	}
 
 	@Test
@@ -84,7 +87,7 @@ public final class WrapMethodTests {
 								"wrapGetIntMethod"
 						)
 				)
-		).expect("""
+		).decompile("""
 				int test(boolean var1) {
 					return Hooks.wrapGetIntMethod(this, var1, var0 -> {
 						OperationInfra.checkCount(var0, 2);
@@ -94,7 +97,7 @@ public final class WrapMethodTests {
 					});
 				}
 				"""
-		);
+		).execute();
 	}
 
 	@Test
@@ -113,7 +116,7 @@ public final class WrapMethodTests {
 								"wrapGetIntStaticMethod"
 						)
 				)
-		).expect("""
+		).decompile("""
 				static int test(boolean var0) {
 					return Hooks.wrapGetIntStaticMethod(var0, var0x -> {
 						OperationInfra.checkCount(var0x, 1);
@@ -122,7 +125,7 @@ public final class WrapMethodTests {
 					});
 				}
 				"""
-		);
+		).execute();
 	}
 
 	@Test
@@ -164,7 +167,7 @@ public final class WrapMethodTests {
 								"multiWrap"
 						)
 				)
-		).expect("""
+		).decompile("""
 				int test(boolean var1, Object var2) {
 					return Hooks.multiWrap(this, var1, var2, var0 -> {
 						OperationInfra.checkCount(var0, 3);
@@ -193,7 +196,7 @@ public final class WrapMethodTests {
 					});
 				}
 				"""
-		);
+		).execute();
 	}
 
 	@Test
@@ -218,8 +221,8 @@ public final class WrapMethodTests {
 		).fail("""
 				Constructors cannot be wrapped
 				Details:
-					- Class being Transformed: fish.cichlidmc.sushi.test.infra.TestTarget
-					- Current Transformer: tests:0
+					- Class being transformed: fish.cichlidmc.sushi.test.infra.TestTarget
+					- Transformers: default[-> tests:0 <-]
 					- Method: void <init>(double)
 				"""
 		);
@@ -239,8 +242,8 @@ public final class WrapMethodTests {
 		).fail("""
 				Static init cannot be wrapped
 				Details:
-					- Class being Transformed: fish.cichlidmc.sushi.test.infra.TestTarget
-					- Current Transformer: tests:0
+					- Class being transformed: fish.cichlidmc.sushi.test.infra.TestTarget
+					- Transformers: default[-> tests:0 <-]
 					- Method: static void <clinit>()
 				"""
 		);
@@ -270,8 +273,8 @@ public final class WrapMethodTests {
 						new HookingTransformer.Hook(
 								new HookingTransformer.Hook.Owner(Hooks.DESC),
 								"injectWithLocal",
-								List.of(new LocalContextParameter(
-										new LocalSelector.Slot(1),
+								List.of(LocalContextParameter.forName(
+										"bl",
 										ConstantDescs.CD_boolean,
 										false
 								))
@@ -290,7 +293,7 @@ public final class WrapMethodTests {
 						),
 						new ExpressionTarget(new InvokeExpressionSelector(new MethodSelector("getInt")))
 				)
-		).expect("""
+		).decompile("""
 				int test(boolean var1) {
 					return Hooks.wrapGetIntMethod(this, var1, var0 -> {
 						OperationInfra.checkCount(var0, 2);
@@ -304,6 +307,8 @@ public final class WrapMethodTests {
 					});
 				}
 				"""
-		);
+		).invoke(
+				"test", List.of(new Parameter(boolean.class, false)), 0
+		).execute();
 	}
 }

@@ -2,13 +2,16 @@ package fish.cichlidmc.sushi.test.def;
 
 import fish.cichlidmc.sushi.api.match.classes.builtin.SingleClassPredicate;
 import fish.cichlidmc.sushi.api.match.expression.ExpressionTarget;
+import fish.cichlidmc.sushi.api.match.expression.builtin.ConstructionExpressionSelector;
 import fish.cichlidmc.sushi.api.match.expression.builtin.InvokeExpressionSelector;
+import fish.cichlidmc.sushi.api.match.expression.builtin.NewExpressionSelector;
 import fish.cichlidmc.sushi.api.match.method.MethodSelector;
 import fish.cichlidmc.sushi.api.match.method.MethodTarget;
 import fish.cichlidmc.sushi.api.param.builtin.LocalContextParameter;
 import fish.cichlidmc.sushi.api.transformer.base.HookingTransformer;
 import fish.cichlidmc.sushi.api.transformer.builtin.ModifyExpressionTransformer;
 import fish.cichlidmc.sushi.api.transformer.infra.Slice;
+import fish.cichlidmc.sushi.api.util.ClassDescs;
 import fish.cichlidmc.sushi.test.framework.TestFactory;
 import fish.cichlidmc.sushi.test.infra.Hooks;
 import fish.cichlidmc.sushi.test.infra.TestTarget;
@@ -48,12 +51,12 @@ public final class ModifyExpressionTests {
 						),
 						new ExpressionTarget(new InvokeExpressionSelector(new MethodSelector("getInt")))
 				)
-		).expect("""
+		).decompile("""
 				void test() {
 					Hooks.modifyInt(getInt());
 				}
 				"""
-		);
+		).execute();
 	}
 
 	@Test
@@ -78,13 +81,13 @@ public final class ModifyExpressionTests {
 						),
 						new ExpressionTarget(new InvokeExpressionSelector(new MethodSelector("getInt")))
 				)
-		).expect("""
+		).decompile("""
 				void test() {
 					byte b = 0;
 					Hooks.modifyIntWithLocal(getInt(), b);
 				}
 				"""
-		);
+		).execute();
 	}
 
 	@Test
@@ -116,12 +119,12 @@ public final class ModifyExpressionTests {
 						),
 						new ExpressionTarget(new InvokeExpressionSelector(new MethodSelector("getInt")))
 				)
-		).expect("""
+		).decompile("""
 				void test() {
 					Hooks.modifyInt(Hooks.modifyInt(getInt()));
 				}
 				"""
-		);
+		).execute();
 	}
 
 	@Test
@@ -166,8 +169,8 @@ public final class ModifyExpressionTests {
 		).fail("""
 				Target matched 0 times, expected 1
 				Details:
-					- Class being Transformed: fish.cichlidmc.sushi.test.infra.TestTarget
-					- Current Transformer: tests:0
+					- Class being transformed: fish.cichlidmc.sushi.test.infra.TestTarget
+					- Transformers: default[-> tests:0 <-]
 					- Method: void test()
 					- Target: ExpressionTarget[selector=InvokeExpressionSelector[selector=MethodSelector[name=thisTargetDoesNotExist]], expected=1]
 				"""
@@ -193,5 +196,62 @@ public final class ModifyExpressionTests {
 						new ExpressionTarget(new InvokeExpressionSelector(new MethodSelector("getInt")))
 				)
 		).fail();
+	}
+
+	@Test
+	public void modifyConstruct() {
+		factory.compile("""
+				void test() {
+					Object o = new Object();
+					String s = o.toString();
+				}
+				"""
+		).transform(
+				new ModifyExpressionTransformer(
+						new SingleClassPredicate(TestTarget.DESC),
+						new MethodTarget(new MethodSelector("test")),
+						Slice.NONE,
+						new HookingTransformer.Hook(
+								new HookingTransformer.Hook.Owner(Hooks.DESC),
+								"modifyObject"
+						),
+						new ExpressionTarget(new ConstructionExpressionSelector((ConstantDescs.CD_Object)))
+				)
+		).decompile("""
+				void test() {
+					Object o = Hooks.modifyObject(new Object());
+					String s = o.toString();
+				}
+				"""
+		).execute();
+	}
+
+	@Test
+	public void modifyNewArray() {
+		factory.compile("""
+				void test() {
+					int[] ints = {1, 2, 3};
+				}
+				"""
+		).transform(
+				new ModifyExpressionTransformer(
+						new SingleClassPredicate(TestTarget.DESC),
+						new MethodTarget(new MethodSelector("test")),
+						Slice.NONE,
+						new HookingTransformer.Hook(
+								new HookingTransformer.Hook.Owner(Hooks.DESC),
+								"modifyIntArray"
+						),
+						new ExpressionTarget(new NewExpressionSelector(ClassDescs.of(int[].class)))
+				)
+		).decompile("""
+				void test() {
+					int[] var10000 = Hooks.modifyIntArray(new int[3]);
+					var10000[0] = 1;
+					var10000[1] = 2;
+					var10000[2] = 3;
+				}
+				"""
+		).execute();
 	}
 }
