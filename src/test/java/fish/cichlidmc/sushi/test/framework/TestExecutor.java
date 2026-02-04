@@ -8,8 +8,8 @@ import fish.cichlidmc.sushi.test.framework.compiler.FileManager;
 import fish.cichlidmc.sushi.test.framework.compiler.SourceObject;
 import fish.cichlidmc.sushi.test.infra.Hooks;
 import fish.cichlidmc.sushi.test.infra.TestTarget;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.params.shadow.de.siegmar.fastcsv.util.Nullable;
 
 import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
@@ -64,10 +64,10 @@ public final class TestExecutor {
 
 		boolean onlyOne = decompiled.size() == 1;
 		String mainOutput = decompiled.values().stream()
-				.filter(s -> onlyOne || s.contains("class TestTarget {"))
+				.filter(s -> onlyOne || s.contains("class TestTarget"))
 				.findFirst()
 				.map(TestExecutor::cleanupDecompile)
-				.orElse(null);
+				.orElseThrow();
 
 		transformed.forEach(TestExecutor::dumpBytes);
 		Assertions.assertEquals(success.decompiled(), mainOutput);
@@ -120,6 +120,7 @@ public final class TestExecutor {
 				return;
 			}
 
+			// check requirements before verifying since verification may fail if requirements are unmet
 			checkRequirements(result.get().requirements());
 			byte[] newBytes = result.get().bytes();
 
@@ -195,7 +196,7 @@ public final class TestExecutor {
 			return constructor.newInstance();
 		} catch (NoSuchMethodException ignored) {
 			// :clueless:
-			return UnsafeHolder.INSTANCE.allocateInstance(clazz);
+			return TestUtils.UNSAFE.allocateInstance(clazz);
 		}
 	}
 
